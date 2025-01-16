@@ -42,13 +42,13 @@ tests:
     asserts:
       - hasDocuments:
           count: 3
-      - documentIndex: &FirstConfigmapDocument 1
+      - documentIndex: &FirstConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *FirstConfigmapDocument
         isNotNullOrEmpty:
           path: metadata.name
-      - documentIndex: &SecondConfigmapDocument 2
+      - documentIndex: &SecondConfigmapDocument 1
         isKind:
           of: ConfigMap
       - documentIndex: *SecondConfigmapDocument
@@ -64,7 +64,7 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: &ConfigmapDocument 1
+      - documentIndex: &ConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *ConfigmapDocument
@@ -82,7 +82,7 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: &ConfigmapDocument 1
+      - documentIndex: &ConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *ConfigmapDocument
@@ -100,7 +100,7 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: &ConfigmapDocument 1
+      - documentIndex: &ConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *ConfigmapDocument
@@ -115,28 +115,82 @@ tests:
           data:
             test: test
           nameOverride: "{{ .Release.Name }}"
-      configMapsFromFolderBasePath: ci/configMapsFolder
+      configMapsFromFolder:
+        enabled: true
+        basePath: ci/configMapsFolder
+        configMapsOverrides:
+          test_2:
+            fileAttributeOverrides:
+              helm.jpg:
+                binary: true
+              test_2.yaml:
+                escaped: true
     asserts:
       - hasDocuments:
           count: 4
-      - documentIndex: &FirstConfigmapDocument 1
+      - documentIndex: &FirstConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *FirstConfigmapDocument
         equal:
           path: metadata.name
           value: RELEASE-NAME
-      - documentIndex: &SecondConfigmapDocument 2
+      - documentIndex: &SecondConfigmapDocument 1
         isKind:
           of: ConfigMap
       - documentIndex: *SecondConfigmapDocument
         equal:
           path: metadata.name
           value: RELEASE-NAME-test_1
-      - documentIndex: &ThirdConfigmapDocument 3
+      - documentIndex: &ThirdConfigmapDocument 2
         isKind:
           of: ConfigMap
       - documentIndex: *ThirdConfigmapDocument
         equal:
           path: metadata.name
           value: RELEASE-NAME-test_2
+
+  - it: with templated nameOverride and from folder with forceRename should pass
+    set:
+      configMaps:
+        config:
+          data:
+            test: test
+          nameOverride: "{{ .Release.Name }}"
+      configMapsFromFolder:
+        enabled: true
+        basePath: ci/configMapsFolder
+        configMapsOverrides:
+          test_1:
+            forceRename: &newName1 newName1
+          test_2:
+            forceRename: &newName2 newName2
+            fileAttributeOverrides:
+              helm.jpg:
+                binary: true
+              test_2.yaml:
+                escaped: true
+    asserts:
+      - hasDocuments:
+          count: 4
+      - documentIndex: &FirstConfigmapDocument 0
+        isKind:
+          of: ConfigMap
+      - documentIndex: *FirstConfigmapDocument
+        equal:
+          path: metadata.name
+          value: RELEASE-NAME
+      - documentIndex: &SecondConfigmapDocument 1
+        isKind:
+          of: ConfigMap
+      - documentIndex: *SecondConfigmapDocument
+        equal:
+          path: metadata.name
+          value: *newName1
+      - documentIndex: &ThirdConfigmapDocument 2
+        isKind:
+          of: ConfigMap
+      - documentIndex: *ThirdConfigmapDocument
+        equal:
+          path: metadata.name
+          value: *newName2

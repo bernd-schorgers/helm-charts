@@ -17,9 +17,8 @@ Renders the configMap objects required by the chart.
 
       {{- /* Create object from the raw configMap values */ -}}
       {{- $configMapObject := (include "bjw-s.common.lib.valuesToObject" (dict "rootContext" $rootContext "id" $key "values" $configMapValues)) | fromYaml -}}
-
       {{- /* Perform validations on the configMap before rendering */ -}}
-      {{- include "bjw-s.common.lib.configMap.validate" (dict "rootContext" $ "object" $configMapObject) -}}
+      {{- include "bjw-s.common.lib.configMap.validate" (dict "rootContext" $ "object" $configMapObject "id" $key) -}}
 
       {{/* Include the configMap class */}}
       {{- include "bjw-s.common.class.configMap" (dict "rootContext" $ "object" $configMapObject) | nindent 0 -}}
@@ -30,36 +29,57 @@ Renders the configMap objects required by the chart.
 {{/*
 Renders configMap objects required by the chart from a folder in the repo's path.
 */}}
-{{- define "bjw-s.common.render.configMaps.fromFiles" -}}
-{{- $rootValues := .Values -}}
+{{- define "bjw-s.common.render.configMaps.fromFolder" -}}
 
-{{/* Generate a list of unique top level folders */}}
-{{ $topLevelFolders := dict}}
-{{- range $path, $_ := .Files.Glob (printf "%s/*/*" .Values.configMapsFromFolderBasePath) -}}
-    {{- $_ := set $topLevelFolders (dir $path) "" -}}
-{{- end -}}
-{{- $top_level_folder_list := keys $topLevelFolders | sortAlpha -}}
-  {{/* Iterate over the top level folders */}}
-  {{ range $path := $top_level_folder_list }}
-    {{- $filesContentNoFormat := ($.Files.Glob (printf "%s/*" $path)) -}}
-    {{- $filesContent := dict -}}
-    {{- $binaryFilesContent := dict -}}
-    {{- range $file_name, $content := $filesContentNoFormat -}}
-      {{- $key := base $file_name -}}
-      {{- if contains ".escape" $key -}}
-        {{- $key := $key | replace ".escape" "" -}}
-        {{- $filesContent = merge $filesContent (dict $key (($.Files.Get $file_name) | replace "{{" "{{ `{{` }}")) -}}
-      {{- else if contains ".binary" $key -}}
-        {{- $key := $key | replace ".binary" "" -}}
-        {{- $binaryFilesContent = merge $binaryFilesContent (dict $key ($.Files.Get $file_name | b64enc ))  -}}
-      {{- else -}}
-        {{- $filesContent = merge $filesContent (dict $key ($.Files.Get $file_name))  -}}
-      {{- end -}}
+  {{- $valuesCopy := .Values -}}
+  {{- $configMapsFromFolder := .Values.configMapsFromFolder | default dict -}}
+  {{- $configMapsFromFolderEnabled := dig "enabled" false $configMapsFromFolder -}}
+
+  {{- if $configMapsFromFolderEnabled -}}
+    {{- /* Perform validations before rendering */ -}}
+    {{- include "bjw-s.common.lib.configMap.fromFolder.validate" (dict "rootContext" $ "basePath" $configMapsFromFolder.basePath) -}}
+    {{- $basePath := $configMapsFromFolder.basePath -}}
+    {{/* Generate a list of unique top level folders */}}
+    {{ $topLevelFolders := dict}}
+    {{- range $path, $_ := .Files.Glob (printf "%s/*/*" $basePath) -}}
+        {{- $_ := set $topLevelFolders (dir $path) "" -}}
     {{- end -}}
+    {{- $top_level_folder_list := keys $topLevelFolders | sortAlpha -}}
+    {{/* Iterate over the top level folders */}}
+    {{ range $path := $top_level_folder_list }}
+      {{- $folder := base $path -}}
+      {{- $configMapData := dict -}}
+      {{- $configMapBinaryData := dict -}}
+      {{- $allFilesContent := ($.Files.Glob (printf "%s/*" $path)) -}}
 
-    {{- $configMapValues := dict "enabled" true "labels" dict "annotations" dict "data" $filesContent "binaryData" $binaryFilesContent -}}
-    {{- $existingConfigMaps := (get $rootValues "configMaps"| default dict) -}}
-    {{- $mergedConfigMaps := deepCopy $existingConfigMaps | merge (dict (base $path) $configMapValues) -}}
-    {{- $rootValues := merge $rootValues (dict "configMaps" $mergedConfigMaps) -}}
+      {{- $configMapAnnotations := dig "configMapsOverrides" $folder "annotations" dict $configMapsFromFolder -}}
+      {{- $configMapLabels := dig "configMapsOverrides" $folder "labels" dict $configMapsFromFolder -}}
+      {{- $configMapForceRename := dig "configMapsOverrides" $folder "forceRename" nil $configMapsFromFolder -}}
+      {{- range $file_name, $content := $allFilesContent -}}
+        {{- $file := base $file_name -}}
+        {{- $fileOverride := dig "configMapsOverrides" $folder "fileAttributeOverrides" $file nil $configMapsFromFolder -}}
+        {{- $fileContent := $.Files.Get $file_name -}}
+        {{- if not $fileOverride.exclude -}}
+          {{- if $fileOverride.binary -}}
+              {{- $fileContent = $fileContent | b64enc -}}
+              {{- $configMapBinaryData = merge $configMapBinaryData (dict $file $fileContent) -}}
+          {{- else if $fileOverride.escaped -}}
+              {{- $fileContent = $fileContent | replace "{{" "{{ `{{` }}" -}}
+              {{- $configMapData = merge $configMapData (dict $file $fileContent) -}}
+          {{- else -}}
+              {{- $configMapData = merge $configMapData (dict $file $fileContent) -}}
+          {{- end -}}
+        {{- end -}}
+
+      {{ end }}
+
+      {{- $configMapValues := dict "enabled" true "forceRename" $configMapForceRename "labels" $configMapLabels "annotations" $configMapAnnotations "data" $configMapData "binaryData" $configMapBinaryData -}}
+      {{- $configMapObject := (include "bjw-s.common.lib.valuesToObject" (dict "rootContext" $ "id" $folder "values" $configMapValues)) | fromYaml -}}
+      {{/* Append it to .Values.configMaps so it can be created by "bjw-s.common.render.configMaps" and fetched by identifier */}}
+      {{- $existingConfigMaps := (get $valuesCopy "configMaps"| default dict) -}}
+      {{- $mergedConfigMaps := deepCopy $existingConfigMaps | merge (dict (base $path) $configMapValues) -}}
+      {{- $valuesCopy := merge $valuesCopy (dict "configMaps" $mergedConfigMaps) -}}
+    {{ end }}
   {{ end }}
+
 {{ end }}

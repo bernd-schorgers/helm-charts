@@ -25,7 +25,7 @@ tests:
           data:
             test: value 1
     asserts:
-      - documentIndex: &ControllerDoc 0
+      - documentIndex: &ControllerDoc 3
         isKind:
           of: Deployment
       - documentIndex: *ControllerDoc
@@ -33,3 +33,41 @@ tests:
           path: spec.template.metadata.annotations
           value:
             checksum/configMaps: 66d23d7a53c4e2a523ba85a969696b4ebb78ec5d79ab9c12c210c1569f48511b
+
+  - it: default metadata from folder should pass
+    set:
+      configMaps:
+        config:
+          enabled: true
+          data:
+            test: value 1
+        test_default_enabled:
+          data:
+            test: value 1
+        test_not_in_checksum:
+          includeInChecksum: false
+          data:
+            test: value 1
+        test_disabled:
+          enabled: false
+          data:
+            test: value 1
+      configMapsFromFolder:
+        enabled: true
+        basePath: ci/configMapsFolder
+        configMapsOverrides:
+          test_2:
+            fileAttributeOverrides:
+              helm.jpg:
+                binary: true
+              test_2.yaml:
+                escaped: true
+    asserts:
+      - documentIndex: &ControllerDoc 5
+        isKind:
+          of: Deployment
+      - documentIndex: *ControllerDoc
+        equal:
+          path: spec.template.metadata.annotations
+          value:
+            checksum/configMaps: e83a24569d0b4f2ccc44aec36d4e9a1c44a29bcc92eefdffe14fb1ce81dff054

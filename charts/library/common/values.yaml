@@ -471,19 +471,43 @@ configMaps:
   #   data:
   #     foo: bar
 
-# -- A path in your parent's chart filesystem where you can add files to be converted into individual ConfigMaps.
+# -- Generate ConfigMaps from a folder in the Helm chart's filesystem
 # Your files will need to be two levels deep from the base path.
-# For example, if you set this to `files/`, and you have this file tree
+# For example, if you set this to `files/`, you should have this file tree
 # files:
 # └── configmap1
 #     ├── file1
 #     └── file2
-# This will generate a ConfigMap named `configmap1` with keys `file1` and `file2`, values being the respective contents of those files.
-# If your file contains `gotpl` syntax that you don't want templated by Helm, prefix the file extension with `.escape` and it will be treated as a regular string.
-# For example, `file1.escape.yaml` will be converted to `file1.yaml` in the ConfigMap with the contents of the file not templated.
-# If your file is a binary file like an image, prefix the file extension with `.binary`
-# For example, `file1.binary.png` will be converted to `file1.png` in the ConfigMap under binaryData with the contents of the file base64 encoded.
-configMapsFromFolderBasePath: null
+# This will generate a ConfigMap named `configmap1` with keys `file1` and `file2`.
+configMapsFromFolder:
+  enabled: false
+  # #-- The path in your parent's chart filesystem where you can add files to be converted into individual ConfigMaps.
+  # basePath: "files/configMaps"
+  # #-- Define overrides for the generated ConfigMaps, each key is the name of a folder in `basePath`
+  # configMapsOverrides:
+  #   test:
+  #     # All ConfigMaps support a `forceRename` field, which allows you to rename the ConfigMap
+  #     forceRename: null
+  #     annotations:
+  #       test: test
+  #     labels:
+  #       test: test
+  #     # Configure how the individual files are added to the ConfigMap
+  #     fileAttributeOverrides:
+  #       # The key is the name of the file inside the ConfigMap's folder
+  #       test.tpl:
+  #         # If true the file won't be added to the ConfigMap
+  #         exclude: false
+  #         # If your file is a binary file like an image, set this to true. Takes precedence over `escaped`
+  #         binary: false
+  #         # If your file contains `gotpl` syntax that you don't want templated by Helm, set this to true
+  #         escaped: true
+  #       test.txt:
+  #         exclude: true
+  #   test2:
+  #     fileAttributeOverrides:
+  #       image.png:
+  #         binary: true
 
 # -- Configure the services for the chart here.
 # Additional services can be added by adding a dictionary key similar to the 'main' service.

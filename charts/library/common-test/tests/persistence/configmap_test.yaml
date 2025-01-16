@@ -55,8 +55,11 @@ tests:
     asserts:
       - documentIndex: 0
         isKind:
+          of: ConfigMap
+      - documentIndex: 1
+        isKind:
           of: Deployment
-      - documentIndex: 0
+      - documentIndex: 1
         equal:
           path: spec.template.spec.volumes[0]
           value:

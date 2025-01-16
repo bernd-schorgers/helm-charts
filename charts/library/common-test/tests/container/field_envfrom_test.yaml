@@ -108,7 +108,7 @@ tests:
           data:
             test: test
     asserts:
-      - documentIndex: &DeploymentDoc 0
+      - documentIndex: &DeploymentDoc 1
         isKind:
           of: Deployment
       - documentIndex: *DeploymentDoc

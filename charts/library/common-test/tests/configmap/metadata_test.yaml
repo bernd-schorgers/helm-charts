@@ -15,7 +15,7 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: &ConfigmapDocument 1
+      - documentIndex: &ConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *ConfigmapDocument
@@ -43,7 +43,7 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: &ConfigmapDocument 1
+      - documentIndex: &ConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *ConfigmapDocument
@@ -79,7 +79,7 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: &ConfigmapDocument 1
+      - documentIndex: &ConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *ConfigmapDocument
@@ -99,17 +99,39 @@ tests:
             helm.sh/chart: common-test-1.0.0
             test_label: test
 
+  - it: default configuration from folder with binary files should fail
+    set:
+      configMaps:
+        config:
+          data:
+            test: test
+      configMapsFromFolder:
+        enabled: true
+        basePath: ci/configMapsFolder
+    asserts:
+      - failedTemplate:
+          errorMessage: "There was an error loading ConfigMap: test_2. If it was automatically generated from a folder verify that files are properly flagged as `binary` or `escaped`"
+
   - it: default metadata from folder should pass
     set:
       configMaps:
         config:
           data:
             test: test
-      configMapsFromFolderBasePath: ci/configMapsFolder
+      configMapsFromFolder:
+        enabled: true
+        basePath: ci/configMapsFolder
+        configMapsOverrides:
+          test_2:
+            fileAttributeOverrides:
+              helm.jpg:
+                binary: true
+              test_2.yaml:
+                escaped: true
     asserts:
       - hasDocuments:
           count: 4
-      - documentIndex: &FirstConfigmapDocument 1
+      - documentIndex: &FirstConfigmapDocument 0
         isKind:
           of: ConfigMap
       - documentIndex: *FirstConfigmapDocument
@@ -123,7 +145,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: RELEASE-NAME
             helm.sh/chart: common-test-1.0.0
-      - documentIndex: &SecondConfigmapDocument 2
+      - documentIndex: &SecondConfigmapDocument 1
         isKind:
           of: ConfigMap
       - documentIndex: *SecondConfigmapDocument
@@ -137,7 +159,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: RELEASE-NAME
             helm.sh/chart: common-test-1.0.0
-      - documentIndex: &ThirdConfigmapDocument 3
+      - documentIndex: &ThirdConfigmapDocument 2
         isKind:
           of: ConfigMap
       - documentIndex: *ThirdConfigmapDocument
@@ -151,3 +173,66 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: RELEASE-NAME
             helm.sh/chart: common-test-1.0.0
+
+  - it: custom metadata from folder should pass
+    set:
+      configMaps:
+        config:
+          data:
+            test: test
+      configMapsFromFolder:
+        enabled: true
+        basePath: ci/configMapsFolder
+        configMapsOverrides:
+          test_2:
+            labels:
+              test: test_label
+            annotations:
+              test: test_annotation
+            fileAttributeOverrides:
+              helm.jpg:
+                binary: true
+              test_2.yaml:
+                escaped: true
+    asserts:
+      - hasDocuments:
+          count: 4
+      - documentIndex: &FirstConfigmapDocument 0
+        isKind:
+          of: ConfigMap
+      - documentIndex: *FirstConfigmapDocument
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: RELEASE-NAME
+            helm.sh/chart: common-test-1.0.0
+      - documentIndex: &SecondConfigmapDocument 1
+        isKind:
+          of: ConfigMap
+      - documentIndex: *SecondConfigmapDocument
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: RELEASE-NAME
+            helm.sh/chart: common-test-1.0.0
+      - documentIndex: &ThirdConfigmapDocument 2
+        isKind:
+          of: ConfigMap
+      - documentIndex: *ThirdConfigmapDocument
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: RELEASE-NAME
+            helm.sh/chart: common-test-1.0.0
+            test: test_label
+      - documentIndex: *ThirdConfigmapDocument
+        equal:
+          path: metadata.annotations
+          value:
+            test: test_annotation

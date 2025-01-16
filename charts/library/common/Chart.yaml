@@ -3,7 +3,7 @@ apiVersion: v2
 name: common
 description: Function library for Helm charts
 type: library
-version: 3.6.1
+version: 3.6.2
 kubeVersion: ">=1.22.0-0"
 keywords:
   - common
@@ -16,10 +16,4 @@ annotations:
   artifacthub.io/changes: |-
     - kind: fixed
       description: |-
-        Only add hostUsers when explicitly configured
-    - kind: fixed
-      description: |-
-        `hosts` should be an optional field for Ingress resources
-    - kind: fixed
-      description: |-
-        `defaultBackend` should be an object for Ingress resources
+        Revamped configMap.fromFiles into configMap.fromFolder
